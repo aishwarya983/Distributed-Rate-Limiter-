@@ -84,6 +84,38 @@ describe('tokenBucketLimiter', () => {
       })
     ).toThrow('refillPerSec must be a positive number');
   });
+
+  test('maintains separate limits for different clients', async () => {
+    const app = buildApp(
+      tokenBucketLimiter({
+        capacity: 2,
+        refillPerSec: 1,
+      })
+    );
+
+    const firstA = await request(app)
+      .get('/test')
+      .set('X-API-Key', 'client-a');
+
+    const secondA = await request(app)
+      .get('/test')
+      .set('X-API-Key', 'client-a');
+
+    const blockedA = await request(app)
+      .get('/test')
+      .set('X-API-Key', 'client-a');
+
+    const firstB = await request(app)
+      .get('/test')
+      .set('X-API-Key', 'client-b');
+
+    expect(firstA.status).toBe(200);
+    expect(secondA.status).toBe(200);
+    expect(blockedA.status).toBe(429);
+
+    // Client B has a separate rate-limit bucket.
+    expect(firstB.status).toBe(200);
+  });
 });
 
 describe('slidingWindowLimiter', () => {
