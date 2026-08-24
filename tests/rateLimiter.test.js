@@ -116,6 +116,25 @@ describe('tokenBucketLimiter', () => {
     // Client B has a separate rate-limit bucket.
     expect(firstB.status).toBe(200);
   });
+
+  test('returns useful details when a request is blocked', async () => {
+    const app = buildApp(
+      tokenBucketLimiter({
+        capacity: 1,
+        refillPerSec: 1,
+      })
+    );
+
+    await request(app).get('/test');
+
+    const res = await request(app).get('/test');
+
+    expect(res.status).toBe(429);
+    expect(res.body.error).toBe('Too Many Requests');
+    expect(res.body.algorithm).toBe('token-bucket');
+    expect(res.body.retryAfterMs).toBeGreaterThan(0);
+    expect(res.headers['retry-after']).toBeDefined();
+  });
 });
 
 describe('slidingWindowLimiter', () => {
@@ -172,5 +191,37 @@ describe('slidingWindowLimiter', () => {
         maxRequests: 0,
       })
     ).toThrow('maxRequests must be a positive number');
+  });
+
+  test('maintains separate limits for different clients', async () => {
+    const app = buildApp(
+      slidingWindowLimiter({
+        windowMs: 5000,
+        maxRequests: 2,
+      })
+    );
+
+    const firstA = await request(app)
+      .get('/test')
+      .set('X-API-Key', 'client-a');
+
+    const secondA = await request(app)
+      .get('/test')
+      .set('X-API-Key', 'client-a');
+
+    const blockedA = await request(app)
+      .get('/test')
+      .set('X-API-Key', 'client-a');
+
+    const firstB = await request(app)
+      .get('/test')
+      .set('X-API-Key', 'client-b');
+
+    expect(firstA.status).toBe(200);
+    expect(secondA.status).toBe(200);
+    expect(blockedA.status).toBe(429);
+
+    // Client B has a separate sliding window.
+    expect(firstB.status).toBe(200);
   });
 });
