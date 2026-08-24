@@ -20,12 +20,33 @@ function buildApp(middleware) {
   return app;
 }
 
+function buildHealthApp() {
+  const app = express();
+
+  app.get('/health', (req, res) => {
+    res.json({ status: 'ok' });
+  });
+
+  return app;
+}
+
 beforeEach(async () => {
   await redis.flushdb();
 });
 
 afterAll(async () => {
   await redis.quit();
+});
+
+describe('health check', () => {
+  test('returns a healthy server status', async () => {
+    const app = buildHealthApp();
+
+    const res = await request(app).get('/health');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ status: 'ok' });
+  });
 });
 
 describe('tokenBucketLimiter', () => {
@@ -62,7 +83,6 @@ describe('tokenBucketLimiter', () => {
     const immediate = await request(app).get('/test');
     expect(immediate.status).toBe(429);
 
-    // 10 tokens/sec means approximately 100ms per token.
     await new Promise((resolve) => setTimeout(resolve, 150));
 
     const afterWait = await request(app).get('/test');
@@ -112,8 +132,6 @@ describe('tokenBucketLimiter', () => {
     expect(firstA.status).toBe(200);
     expect(secondA.status).toBe(200);
     expect(blockedA.status).toBe(429);
-
-    // Client B has a separate rate-limit bucket.
     expect(firstB.status).toBe(200);
   });
 
@@ -220,8 +238,6 @@ describe('slidingWindowLimiter', () => {
     expect(firstA.status).toBe(200);
     expect(secondA.status).toBe(200);
     expect(blockedA.status).toBe(429);
-
-    // Client B has a separate sliding window.
     expect(firstB.status).toBe(200);
   });
 });
