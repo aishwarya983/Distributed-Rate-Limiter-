@@ -20,13 +20,17 @@ function validatePositiveNumber(value, name) {
 }
 
 /**
+ * Build Redis keys consistently for each rate-limiting algorithm.
+ */
+function buildRedisKey(algorithm, clientId) {
+  return `rl:${algorithm}:${clientId}`;
+}
+
+/**
  * Identify the caller.
  *
  * API keys are normalized so values such as:
- *   Client123
- *   client123
- *   CLIENT123
- *
+ * Client123, client123, CLIENT123
  * are treated as the same client.
  *
  * Falls back to the client's IP address when no API key is provided.
@@ -59,7 +63,7 @@ function tokenBucketLimiter({
 
   return async function (req, res, next) {
     const clientId = keyGenerator(req);
-    const redisKey = `rl:token:${clientId}`;
+    const redisKey = buildRedisKey('token', clientId);
     const now = Date.now();
 
     try {
@@ -116,7 +120,7 @@ function slidingWindowLimiter({
 
   return async function (req, res, next) {
     const clientId = keyGenerator(req);
-    const redisKey = `rl:window:${clientId}`;
+    const redisKey = buildRedisKey('window', clientId);
     const now = Date.now();
 
     try {
