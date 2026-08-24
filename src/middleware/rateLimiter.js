@@ -21,10 +21,24 @@ function validatePositiveNumber(value, name) {
 
 /**
  * Identify the caller.
- * Uses API key when available and falls back to IP for anonymous traffic.
+ *
+ * API keys are normalized so values such as:
+ *   Client123
+ *   client123
+ *   CLIENT123
+ *
+ * are treated as the same client.
+ *
+ * Falls back to the client's IP address when no API key is provided.
  */
 function defaultKeyGenerator(req) {
-  return req.headers['x-api-key'] || req.ip || 'anonymous';
+  const apiKey = req.headers['x-api-key'];
+
+  if (apiKey) {
+    return apiKey.trim().toLowerCase();
+  }
+
+  return req.ip || 'anonymous';
 }
 
 /**
