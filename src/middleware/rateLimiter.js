@@ -77,6 +77,7 @@ function tokenBucketLimiter({
           retryAfterMs / 1000
         )}s.`,
         retryAfterMs,
+        algorithm: 'token-bucket',
       });
     } catch (err) {
       console.error('[rateLimiter] Redis error, failing open:', err.message);
@@ -135,6 +136,7 @@ function slidingWindowLimiter({
           retryAfterMs / 1000
         )}s.`,
         retryAfterMs,
+        algorithm: 'sliding-window',
       });
     } catch (err) {
       console.error('[rateLimiter] Redis error, failing open:', err.message);
